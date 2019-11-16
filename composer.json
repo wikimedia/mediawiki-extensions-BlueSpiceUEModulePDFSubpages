@@ -1,0 +1,12 @@
+{
+	"name": "bluespice/uemodulepdfsubpages",
+	"type": "mediawiki-extension",
+	"description": "Enables recursive export of pages into PDF format with subpages",
+	"license": "GPL-3.0-only",
+	"extra": {
+		"installer-name": "BlueSpiceUEModulePDFSubpages"
+	},
+	"require": {
+		"composer/installers": "~1.0"
+	}
+}
