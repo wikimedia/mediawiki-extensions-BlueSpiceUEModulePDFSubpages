@@ -6,10 +6,6 @@
 		]
 	},
 	"bs-uemodulepdfsubpages-extension-description": "Enables recursive export of pages into PDF format with subpages.",
-	"UEModulePDFSubpages": "UniversalExport PDF Module (with subpages)",
-	"prefs-uemodulepdfsubpages": "UniversalExport PDF Module (with subpages)",
-	"prefs-UEModulePDFSubpages": "UniversalExport PDF Module (with subpages)",
-	"extension-description": "Enables recursive export to PDF",
 	"bs-uemodulepdfsubpages-widgetlink-subpages-text": "PDF page with subpages",
 	"bs-uemodulepdfsubpages-widgetlink-subpages-title": "Export this page and all subpages as PDF.",
 	"action-uemodulepdfsubpages-export": "exporting a page, including all sub pages, to PDF",
