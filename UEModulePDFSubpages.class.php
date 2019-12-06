@@ -39,16 +39,16 @@ class UEModulePDFSubpages extends BsExtensionMW {
 	 * Initialization of UEModulePDFSubpages extension
 	 */
 	protected function initExt() {
-		//Hooks
+		// Hooks
 		$this->setHook( 'SkinTemplateOutputPageBeforeExec' );
 		$this->setHook( 'BSUEModulePDFBeforeAddingContent' );
 	}
 
 	/**
 	 * Hook handler to add menu
-	 * @param Skin $skin
-	 * @param Template $template
-	 * @return boolean Always true to keep hook running
+	 * @param SkinTemplate &$oSkin
+	 * @param QuickTemplate &$oTemplate
+	 * @return bool Always true to keep hook running
 	 */
 	public function onSkinTemplateOutputPageBeforeExec( &$oSkin, &$oTemplate ) {
 		if ( $oSkin->getTitle()->isContentPage() === false ) {
@@ -65,7 +65,7 @@ class UEModulePDFSubpages extends BsExtensionMW {
 
 	/**
 	 * Builds the ContentAction Array fort the current page
-	 * @return Array The ContentAction Array
+	 * @return array - The ContentAction Array
 	 */
 	private function buildContentAction() {
 		$aCurrentQueryParams = $this->getRequest()->getValues();
@@ -94,44 +94,50 @@ class UEModulePDFSubpages extends BsExtensionMW {
 
 	/**
 	 *
-	 * @global WebRequest $wgRequest
-	 * @param array $aTemplate
-	 * @param array $aContents
-	 * @param array $aParams
-	 * @return boolean Always true to keep hook running
+	 * @param array &$aTemplate
+	 * @param array &$aContents
+	 * @param \stdClass $oCaller
+	 * @param array &$aParams
+	 * @return bool Always true to keep hook running
 	 */
-	public function onBSUEModulePDFBeforeAddingContent( &$aTemplate, &$aContents,$oCaller, &$aParams = array() ) {
+	public function onBSUEModulePDFBeforeAddingContent( &$aTemplate, &$aContents, $oCaller,
+		&$aParams = [] ) {
 		global $wgRequest;
 		$aParams = $oCaller->aParams;
 		if ( !isset( $aParams['subpages'] ) ) {
 			$aUEParams = $wgRequest->getArray( 'ue' );
 			$aParams['subpages'] = isset( $aUEParams['subpages'] ) ? $aUEParams['subpages'] : 0;
 		}
-		if( $aParams['subpages'] == 0 ) return true;
+		if ( $aParams['subpages'] == 0 ) { return true;
+		}
 		$aTitles = $oCaller->oRequestedTitle->getSubpages();
-		if ( count( $aTitles ) < 1 ) return true;
-		$aPages = array();
-		foreach ( $aTitles as $key => $oTitle ){
-			if( $oTitle == null ) continue;
+		if ( count( $aTitles ) < 1 ) { return true;
+		}
+		$aPages = [];
+		foreach ( $aTitles as $key => $oTitle ) {
+			if ( $oTitle == null ) { continue;
+			}
 			$aPageNames[] = $oTitle->getPrefixedText();
 		}
 		natcasesort( $aPageNames );
 		$aPageNamesSorted = array_values( $aPageNames );
 		$iContentBefore = count( $aContents['content'] );
 		$iPagesBefore = count( $aPages );
-		//TODO: Security: check if user can read subpages
-		foreach ( $aTitles as $oTitle ){
-			if( $oTitle == null ) continue;
-			$arrkey = array_search ( $oTitle->getPrefixedText(), $aPageNamesSorted );
+		// TODO: Security: check if user can read subpages
+		foreach ( $aTitles as $oTitle ) {
+			if ( $oTitle == null ) { continue;
+			}
+			$arrkey = array_search( $oTitle->getPrefixedText(), $aPageNamesSorted );
 			$oPageContentProvider = new BsPageContentProvider();
 			$oDOMDocument = $oPageContentProvider->getDOMDocumentContentFor( $oTitle );
-			if ( !$oDOMDocument instanceof DOMDocument ) continue;
+			if ( !$oDOMDocument instanceof DOMDocument ) { continue;
+			}
 			$aContents['content'][$iContentBefore + $arrkey] = $oDOMDocument->documentElement;
 			$aPages[$iPagesBefore + $arrkey] = $oTitle->getPrefixedText();
 		}
 		ksort( $aContents['content'] );
 		ksort( $aPages );
-		\Hooks::run( 'UEModulePDFSubpagesAfterContent', array( $this, &$aContents ) );
+		\Hooks::run( 'UEModulePDFSubpagesAfterContent', [ $this, &$aContents ] );
 
 		return true;
 	}
