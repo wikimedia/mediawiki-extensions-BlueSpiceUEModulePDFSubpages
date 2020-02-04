@@ -1,0 +1,10 @@
+{
+	"@metadata": {
+		"authors": [
+			"Hamilton Abreu"
+		]
+	},
+	"bs-uemodulepdfsubpages-widgetlink-subpages-text": "Página e sub-páginas para PDF",
+	"bs-uemodulepdfsubpages-widgetlink-subpages-title": "Exportar esta página e todas as subpáginas como PDF.",
+	"action-uemodulepdfsubpages-export": "exportar uma página, incluindo todas as subpáginas, para PDF"
+}
