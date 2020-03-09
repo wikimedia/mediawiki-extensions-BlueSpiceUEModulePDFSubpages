@@ -28,6 +28,8 @@
  * @filesource
  */
 
+use BlueSpice\Services;
+
 /**
  * Base class for UniversalExport PDF Module extension
  * @package BlueSpice_Extensions
@@ -104,41 +106,205 @@ class UEModulePDFSubpages extends BsExtensionMW {
 		&$aParams = [] ) {
 		global $wgRequest;
 		$aParams = $oCaller->aParams;
+
 		if ( !isset( $aParams['subpages'] ) ) {
 			$aUEParams = $wgRequest->getArray( 'ue' );
 			$aParams['subpages'] = isset( $aUEParams['subpages'] ) ? $aUEParams['subpages'] : 0;
 		}
-		if ( $aParams['subpages'] == 0 ) { return true;
+
+		if ( $aParams['subpages'] == 0 ) {
+			return true;
 		}
-		$aTitles = $oCaller->oRequestedTitle->getSubpages();
-		if ( count( $aTitles ) < 1 ) { return true;
+
+		$linkMap = [];
+
+		$newDOM = new DOMDocument();
+		$pageDOM = $aContents['content'][0];
+		$pageDOM->setAttribute(
+			'class',
+			$pageDOM->getAttribute( 'class' ) . ' bs-source-page'
+		);
+
+		$node = $newDOM->importNode( $pageDOM, true );
+
+		$rootTitle = $oCaller->oRequestedTitle;
+		if ( $pageDOM->getElementsByTagName( 'a' )->item( 0 )->getAttribute( 'id' ) === '' ) {
+			$pageDOM->getElementsByTagName( 'a' )->item( 0 )->setAttribute(
+				'id',
+				md5( 'bs-ue-' . $rootTitle->getPrefixedDBKey() )
+			);
 		}
-		$aPages = [];
-		foreach ( $aTitles as $key => $oTitle ) {
-			if ( $oTitle == null ) { continue;
+
+		$linkMap[ $aTemplate['title-element']->nodeValue ] = $pageDOM->getElementsByTagName( 'a' )
+			->item( 0 )->getAttribute( 'id' );
+
+		$newDOM->appendChild( $node );
+
+		$aSubpageList = [];
+		$aSubpageList = $oCaller->oRequestedTitle->getSubpages();
+
+		if ( count( $aSubpageList ) < 1 ) {
+			return true;
+		}
+
+		$aSubpages = [];
+		$aSubpageNames = [];
+		foreach ( $aSubpageList as $key => $oTitle ) {
+			if ( $oTitle == null ) {
+				continue;
 			}
-			$aPageNames[] = $oTitle->getPrefixedText();
+			$aSubpageNames[] = $oTitle->getPrefixedText();
 		}
-		natcasesort( $aPageNames );
-		$aPageNamesSorted = array_values( $aPageNames );
-		$iContentBefore = count( $aContents['content'] );
-		$iPagesBefore = count( $aPages );
-		// TODO: Security: check if user can read subpages
-		foreach ( $aTitles as $oTitle ) {
-			if ( $oTitle == null ) { continue;
+
+		natcasesort( $aSubpageNames );
+		$aSubpageNamesSorted = array_values( $aSubpageNames );
+
+		$pageProvider = new BsPDFPageProvider();
+
+		foreach ( $aSubpageNamesSorted as $key => $value ) {
+			$subpageTitle = \Title::newFromText( $value );
+			$pageProviderContent = $pageProvider->getPage( [
+				'article-id' => $subpageTitle->getArticleID(),
+				'title' => $subpageTitle->getFullText()
+			] );
+
+			if ( !isset( $pageProviderContent['dom'] ) ) {
+				continue;
 			}
-			$arrkey = array_search( $oTitle->getPrefixedText(), $aPageNamesSorted );
-			$oPageContentProvider = new BsPageContentProvider();
-			$oDOMDocument = $oPageContentProvider->getDOMDocumentContentFor( $oTitle );
-			if ( !$oDOMDocument instanceof DOMDocument ) { continue;
+
+			$DOMDocument = $pageProviderContent['dom'];
+
+			$documentLinks = $DOMDocument->getElementsByTagName( 'a' );
+
+			if ( $documentLinks->item( 0 ) instanceof DOMElement ) {
+				if ( $documentLinks->item( 0 )->getAttribute( 'id' ) === '' ) {
+					$documentLinks->item( 0 )->setAttribute(
+						'id',
+						md5( 'bs-ue-' . $subpageTitle->getPrefixedDBKey() )
+					);
+				}
+				$linkMap[$subpageTitle->getSubpageText()] = $documentLinks->item( 0 )->getAttribute( 'id' );
 			}
-			$aContents['content'][$iContentBefore + $arrkey] = $oDOMDocument->documentElement;
-			$aPages[$iPagesBefore + $arrkey] = $oTitle->getPrefixedText();
+
+			$aContents['content'][] = $DOMDocument->documentElement;
 		}
-		ksort( $aContents['content'] );
-		ksort( $aPages );
+
+		$documentToc = $this->makeToc( $linkMap );
+		foreach ( $aContents['content'] as $oDom ) {
+			$this->rewriteLinks( $oDom, $linkMap );
+		}
+
+		array_unshift( $aContents['content'], $documentToc->documentElement );
+
 		\Hooks::run( 'UEModulePDFSubpagesAfterContent', [ $this, &$aContents ] );
 
 		return true;
+	}
+
+	/**
+	 * @param DOMDocument &$domNode
+	 * @param array $linkMap
+	 */
+	protected function rewriteLinks( &$domNode, $linkMap ) {
+		$anchors = $domNode->getElementsByTagName( 'a' );
+		foreach ( $anchors as $anchor ) {
+			$href = null;
+
+			$href  = $anchor->getAttribute( 'href' );
+			$class = $anchor->getAttribute( 'class' );
+
+			if ( empty( $href ) ) {
+				// Jumplink targets
+				continue;
+			}
+
+			$classes = explode( ' ', $class );
+
+			if ( in_array( 'external', $classes ) ) {
+				continue;
+			}
+
+			$parsedHref = parse_url( $href );
+			if ( !isset( $parsedHref['path'] ) ) {
+				continue;
+			}
+
+			$parser = new \BlueSpice\Utility\UrlTitleParser(
+				$href,
+				Services::getInstance()->getMainConfig()
+			);
+			$pathBasename = $parser->parseTitle()->getPrefixedText();
+
+			// Do we have a mapping?
+			if ( !isset( $linkMap[$pathBasename] ) ) {
+				/*
+				 * The following logic is an alternative way of creating internal links
+				 * in case of poorly splitted up URLs like mentioned above
+				 */
+				if ( filter_var( $href, FILTER_VALIDATE_URL ) ) {
+					$pathBasename = "";
+					$hrefDecoded = urldecode( $href );
+
+					foreach ( $linkMap as $linkKey => $linkValue ) {
+						if ( strpos( str_replace( '_', ' ', $hrefDecoded ), $linkKey ) ) {
+							$pathBasename = $linkKey;
+						}
+					}
+
+					if ( empty( $pathBasename ) || strlen( $pathBasename ) <= 0 ) {
+						continue;
+					}
+				}
+			}
+
+			$anchor->setAttribute( 'href', '#' . $linkMap[$pathBasename] );
+		}
+	}
+
+	/**
+	 * @param array $linkMap
+	 * @return DOMDocument
+	 */
+	protected function makeTOC( $linkMap ) {
+		$tocDocument = new DOMDocument();
+
+		$tocWrapper = $tocDocument->createElement( 'div' );
+		$tocWrapper->setAttribute( 'class', 'bs-page-content bs-page-toc' );
+
+		$tocHeading = $tocDocument->createElement( 'h1' );
+		$tocHeading->appendChild( $tocDocument->createTextNode( wfMessage( 'toc' )->text() ) );
+
+		$tocWrapper->appendChild( $tocHeading );
+
+		$tocList = $tocDocument->createElement( 'ul' );
+		$tocList->setAttribute( 'class', 'toc' );
+
+		$count = 1;
+		foreach ( $linkMap as $linkname => $linkHref ) {
+			$liClass = 'toclevel-1';
+			if ( $count === 1 ) {
+				$liClass .= ' bs-source-page';
+			}
+			$tocListItem = $tocList->appendChild( $tocDocument->createElement( 'li' ) );
+			$tocListItem->setAttribute( 'class', $liClass );
+
+			$tocListItemLink = $tocListItem->appendChild( $tocDocument->createElement( 'a' ) );
+			$tocListItemLink->setAttribute( 'href', '#' . $linkHref );
+			$tocListItemLink->setAttribute( 'class', 'toc-link' );
+
+			$tocLinkSpanNumber = $tocListItemLink->appendChild( $tocDocument->createElement( 'span' ) );
+			$tocLinkSpanNumber->setAttribute( 'class', 'tocnumber' );
+			$tocLinkSpanNumber->appendChild( $tocDocument->createTextNode( $count . '.' ) );
+
+			$tocListSpanText = $tocListItemLink->appendChild( $tocDocument->createElement( 'span' ) );
+			$tocListSpanText->setAttribute( 'class', 'toctext' );
+			$tocListSpanText->appendChild( $tocDocument->createTextNode( ' ' . $linkname ) );
+
+			$count++;
+		}
+		$tocWrapper->appendChild( $tocList );
+		$tocDocument->appendChild( $tocWrapper );
+
+		return $tocDocument;
 	}
 }
