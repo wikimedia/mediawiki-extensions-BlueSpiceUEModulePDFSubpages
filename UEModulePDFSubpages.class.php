@@ -54,7 +54,14 @@ class UEModulePDFSubpages extends BsExtensionMW {
 		if ( $oSkin->getTitle()->isContentPage() === false ) {
 			return true;
 		}
-		if ( !$oSkin->getTitle()->userCan( 'uemodulepdfsubpages-export' ) ) {
+		if ( !\MediaWiki\MediaWikiServices::getInstance()
+			->getPermissionManager()
+			->userCan(
+				'uemodulepdfsubpages-export',
+				$oSkin->getUser(),
+				$oSkin->getTitle()
+			)
+		) {
 			return true;
 		}
 
