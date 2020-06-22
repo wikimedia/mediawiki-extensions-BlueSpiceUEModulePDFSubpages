@@ -231,6 +231,11 @@ class UEModulePDFSubpages extends BsExtensionMW {
 				continue;
 			}
 
+			if ( !( strpos( $href, '/' ) === 0 ) ) {
+				// ignore images with link=
+				continue;
+			}
+
 			$parsedHref = parse_url( $href );
 			if ( !isset( $parsedHref['path'] ) ) {
 				continue;
