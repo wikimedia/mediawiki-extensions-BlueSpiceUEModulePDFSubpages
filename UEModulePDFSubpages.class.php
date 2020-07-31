@@ -219,29 +219,38 @@ class UEModulePDFSubpages extends BsExtensionMW {
 		$anchors = $domNode->getElementsByTagName( 'a' );
 		foreach ( $anchors as $anchor ) {
 			$href = null;
+			$linkTitle = $anchor->getAttribute( 'data-bs-title' );
+			if ( $linkTitle ) {
+				$pathBasename = $linkTitle;
+			} else {
+				$href = $anchor->getAttribute( 'href' );
 
-			$href  = $anchor->getAttribute( 'href' );
-			$class = $anchor->getAttribute( 'class' );
+				$class = $anchor->getAttribute( 'class' );
 
-			if ( empty( $href ) ) {
-				// Jumplink targets
-				continue;
-			}
+				if ( empty( $href ) ) {
+					// Jumplink targets
+					continue;
+				}
 
-			$classes = explode( ' ', $class );
+				$classes = explode( ' ', $class );
 
-			if ( in_array( 'external', $classes ) ) {
-				continue;
-			}
+				if ( in_array( 'external', $classes ) ) {
+					continue;
+				}
 
-			if ( !( strpos( $href, '/' ) === 0 ) ) {
-				// ignore images with link=
-				continue;
-			}
+				$parsedHref = parse_url( $href );
+				if ( !isset( $parsedHref['path'] ) ) {
+					continue;
+				}
 
-			$parsedHref = parse_url( $href );
-			if ( !isset( $parsedHref['path'] ) ) {
-				continue;
+				$parser = new \BlueSpice\Utility\UrlTitleParser(
+					$href, MediaWiki\MediaWikiServices::getInstance()->getMainConfig(), true
+				);
+				$parsedTitle = $parser->parseTitle();
+				if ( !$parsedTitle instanceof Title ) {
+					continue;
+				}
+				$pathBasename = $parsedTitle->getPrefixedText();
 			}
 
 			$parser = new \BlueSpice\Utility\UrlTitleParser(
@@ -252,14 +261,14 @@ class UEModulePDFSubpages extends BsExtensionMW {
 
 			// Do we have a mapping?
 			if ( !isset( $linkMap[$pathBasename] ) ) {
+				$pathBasename = "";
+				// Do we have a mapping?
 				/*
 				 * The following logic is an alternative way of creating internal links
-				 * in case of poorly splitted up URLs like mentioned above
+				 * in case of poorly split up URLs like mentioned above
 				 */
 				if ( filter_var( $href, FILTER_VALIDATE_URL ) ) {
-					$pathBasename = "";
 					$hrefDecoded = urldecode( $href );
-
 					foreach ( $linkMap as $linkKey => $linkValue ) {
 						if ( strpos( str_replace( '_', ' ', $hrefDecoded ), $linkKey ) ) {
 							$pathBasename = $linkKey;
@@ -272,7 +281,11 @@ class UEModulePDFSubpages extends BsExtensionMW {
 				}
 			}
 
-			$anchor->setAttribute( 'href', '#' . $linkMap[$pathBasename] );
+			if ( !$pathBasename || !isset( $linkMap[$pathBasename] ) ) {
+				$anchor->removeAttribute( 'href' );
+			} else {
+				$anchor->setAttribute( 'href', '#' . $linkMap[$pathBasename] );
+			}
 		}
 	}
 
