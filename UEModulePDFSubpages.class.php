@@ -28,7 +28,7 @@
  * @filesource
  */
 
-use BlueSpice\Services;
+use MediaWiki\MediaWikiServices;
 
 /**
  * Base class for UniversalExport PDF Module extension
@@ -59,7 +59,7 @@ class UEModulePDFSubpages extends BsExtensionMW {
 		if ( $oSkin->getTitle()->isContentPage() === false ) {
 			return true;
 		}
-		if ( !\MediaWiki\MediaWikiServices::getInstance()
+		if ( !MediaWikiServices::getInstance()
 			->getPermissionManager()
 			->userCan(
 				'uemodulepdfsubpages-export',
@@ -246,7 +246,7 @@ class UEModulePDFSubpages extends BsExtensionMW {
 
 			$parser = new \BlueSpice\Utility\UrlTitleParser(
 				$href,
-				Services::getInstance()->getMainConfig()
+				MediaWikiServices::getInstance()->getMainConfig()
 			);
 			$pathBasename = $parser->parseTitle()->getPrefixedText();
 
