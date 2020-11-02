@@ -206,7 +206,13 @@ class UEModulePDFSubpages extends BsExtensionMW {
 
 		array_unshift( $aContents['content'], $documentToc->documentElement );
 
-		\Hooks::run( 'UEModulePDFSubpagesAfterContent', [ $this, &$aContents ] );
+		MediaWikiServices::getInstance()->getHookContainer()->run(
+			'UEModulePDFSubpagesAfterContent',
+			[
+				$this,
+				&$aContents
+			]
+		);
 
 		return true;
 	}
