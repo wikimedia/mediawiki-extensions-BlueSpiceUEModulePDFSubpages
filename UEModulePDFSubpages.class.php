@@ -227,7 +227,14 @@ class UEModulePDFSubpages extends BsExtensionMW {
 			$href = null;
 			$linkTitle = $anchor->getAttribute( 'data-bs-title' );
 			if ( $linkTitle ) {
-				$pathBasename = $linkTitle;
+				$pathBasename = str_replace( '_', ' ', $linkTitle );
+				$href  = $anchor->getAttribute( 'href' );
+
+				$parsedHref = parse_url( $href );
+				$linkMap[$pathBasename] = md5( $pathBasename );
+				if ( isset( $parsedHref['fragment'] ) ) {
+					$linkMap[$pathBasename] = md5( $pathBasename ) . '-' . md5( $parsedHref['fragment'] );
+				}
 			} else {
 				$href = $anchor->getAttribute( 'href' );
 
@@ -287,11 +294,10 @@ class UEModulePDFSubpages extends BsExtensionMW {
 				}
 			}
 
-			if ( !$pathBasename || !isset( $linkMap[$pathBasename] ) ) {
-				$anchor->removeAttribute( 'href' );
-			} else {
-				$anchor->setAttribute( 'href', '#' . $linkMap[$pathBasename] );
+			if ( !isset( $linkMap[$pathBasename] ) ) {
+				continue;
 			}
+			$anchor->setAttribute( 'href', '#' . $linkMap[$pathBasename] );
 		}
 	}
 
