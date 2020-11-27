@@ -28,6 +28,7 @@
  * @filesource
  */
 
+use BlueSpice\Utility\UrlTitleParser;
 use MediaWiki\MediaWikiServices;
 
 /**
@@ -106,111 +107,79 @@ class UEModulePDFSubpages extends BsExtensionMW {
 
 	/**
 	 *
-	 * @param array &$aTemplate
-	 * @param array &$aContents
-	 * @param \stdClass $oCaller
-	 * @param array &$aParams
+	 * @param array &$template
+	 * @param array &$contents
+	 * @param \stdClass $caller
+	 * @param array &$params
 	 * @return bool Always true to keep hook running
 	 */
-	public function onBSUEModulePDFBeforeAddingContent( &$aTemplate, &$aContents, $oCaller,
-		&$aParams = [] ) {
+	public function onBSUEModulePDFBeforeAddingContent(
+		&$template,
+		&$contents,
+		$caller,
+		&$params = []
+	) {
 		global $wgRequest;
-		$aParams = $oCaller->aParams;
+		$ueParams = $caller->aParams;
 
-		if ( !isset( $aParams['subpages'] ) ) {
-			$aUEParams = $wgRequest->getArray( 'ue' );
-			$aParams['subpages'] = isset( $aUEParams['subpages'] ) ? $aUEParams['subpages'] : 0;
+		if ( empty( $ueParams ) ) {
+			$requestParams = $wgRequest->getArray( 'ue' );
+			$ueParams['subpages'] = isset( $requestParams['subpages'] ) ? $requestParams['subpages'] : 0;
 		}
 
-		if ( $aParams['subpages'] == 0 ) {
+		if ( $ueParams['subpages'] == 0 ) {
 			return true;
 		}
 
-		$linkMap = [];
-
 		$newDOM = new DOMDocument();
-		$pageDOM = $aContents['content'][0];
+		$pageDOM = $contents['content'][0];
 		$pageDOM->setAttribute(
 			'class',
 			$pageDOM->getAttribute( 'class' ) . ' bs-source-page'
 		);
-
 		$node = $newDOM->importNode( $pageDOM, true );
 
-		$rootTitle = $oCaller->oRequestedTitle;
+		$includedTitleMap = [];
+		$rootTitle = \Title::newFromText( $template['title-element']->nodeValue );
 		if ( $pageDOM->getElementsByTagName( 'a' )->item( 0 )->getAttribute( 'id' ) === '' ) {
 			$pageDOM->getElementsByTagName( 'a' )->item( 0 )->setAttribute(
 				'id',
-				md5( 'bs-ue-' . $rootTitle->getPrefixedDBKey() )
+				md5( $rootTitle->getPrefixedText() )
 			);
 		}
 
-		$linkMap[ $aTemplate['title-element']->nodeValue ] = $pageDOM->getElementsByTagName( 'a' )
-			->item( 0 )->getAttribute( 'id' );
+		$includedTitleMap[$template['title-element']->nodeValue]
+			= $pageDOM->getElementsByTagName( 'a' )->item( 0 )->getAttribute( 'id' );
 
 		$newDOM->appendChild( $node );
 
-		$aSubpageList = [];
-		$aSubpageList = $oCaller->oRequestedTitle->getSubpages();
-
-		if ( count( $aSubpageList ) < 1 ) {
+		$includedTitles = $this->findSubpages( $caller );
+		if ( count( $includedTitles ) < 1 ) {
 			return true;
 		}
 
-		$aSubpages = [];
-		$aSubpageNames = [];
-		foreach ( $aSubpageList as $key => $oTitle ) {
-			if ( $oTitle == null ) {
-				continue;
-			}
-			$aSubpageNames[] = $oTitle->getPrefixedText();
+		$titleMap = array_merge(
+			$includedTitleMap,
+			$this->generateIncludedTitlesMap( $includedTitles )
+		);
+
+		$this->setIncludedTitlesId( $includedTitles, $titleMap );
+		$this->addIncludedTitlesContent( $includedTitles, $titleMap, $contents['content'] );
+
+		foreach ( $contents['content'] as $oDom ) {
+			$this->rewriteLinks( $oDom, $titleMap );
 		}
 
-		natcasesort( $aSubpageNames );
-		$aSubpageNamesSorted = array_values( $aSubpageNames );
+		$this->makeBookmarks( $template, $includedTitles );
 
-		$pageProvider = new BsPDFPageProvider();
-
-		foreach ( $aSubpageNamesSorted as $key => $value ) {
-			$subpageTitle = \Title::newFromText( $value );
-			$pageProviderContent = $pageProvider->getPage( [
-				'article-id' => $subpageTitle->getArticleID(),
-				'title' => $subpageTitle->getFullText()
-			] );
-
-			if ( !isset( $pageProviderContent['dom'] ) ) {
-				continue;
-			}
-
-			$DOMDocument = $pageProviderContent['dom'];
-
-			$documentLinks = $DOMDocument->getElementsByTagName( 'a' );
-
-			if ( $documentLinks->item( 0 ) instanceof DOMElement ) {
-				if ( $documentLinks->item( 0 )->getAttribute( 'id' ) === '' ) {
-					$documentLinks->item( 0 )->setAttribute(
-						'id',
-						md5( 'bs-ue-' . $subpageTitle->getPrefixedDBKey() )
-					);
-				}
-				$linkMap[$subpageTitle->getSubpageText()] = $documentLinks->item( 0 )->getAttribute( 'id' );
-			}
-
-			$aContents['content'][] = $DOMDocument->documentElement;
-		}
-
-		$documentToc = $this->makeToc( $linkMap );
-		foreach ( $aContents['content'] as $oDom ) {
-			$this->rewriteLinks( $oDom, $linkMap );
-		}
-
-		array_unshift( $aContents['content'], $documentToc->documentElement );
+		$documentToc = $this->makeToc( $titleMap );
+		array_unshift( $contents, $documentToc->documentElement );
 
 		MediaWikiServices::getInstance()->getHookContainer()->run(
 			'UEModulePDFSubpagesAfterContent',
 			[
 				$this,
-				&$aContents
+				&$contents
 			]
 		);
 
@@ -218,26 +187,118 @@ class UEModulePDFSubpages extends BsExtensionMW {
 	}
 
 	/**
-	 * @param DOMDocument &$domNode
+	 *
+	 * @param array $includedTitles
+	 * @param array $includedTitleMap
+	 * @param array &$contents
+	 */
+	private function addIncludedTitlesContent( $includedTitles, $includedTitleMap, &$contents ) {
+		foreach ( $includedTitles as $name => $content ) {
+			$contents[] = $content['dom']->documentElement;
+		}
+	}
+
+	/**
+	 *
+	 * @param array $includedTitles
+	 * @return array
+	 */
+	private function generateIncludedTitlesMap( $includedTitles ) {
+		$includedTitleMap = [];
+
+		foreach ( $includedTitles as $name => $content ) {
+			$includedTitleMap = array_merge( $includedTitleMap, [ $name => md5( $name ) ] );
+		}
+
+		return $includedTitleMap;
+	}
+
+	/**
+	 *
+	 * @param array &$includedTitles
+	 * @param array $includedTitleMap
+	 */
+	private function setIncludedTitlesId( &$includedTitles, $includedTitleMap ) {
+		foreach ( $includedTitles as $name => $content ) {
+			// set array index from $includedTitleMap
+			$documentLinks = $content['dom']->getElementsByTagName( 'a' );
+			if ( $documentLinks->item( 0 ) instanceof DOMElement ) {
+				$documentLinks->item( 0 )->setAttribute(
+					'id',
+					$includedTitleMap[$name]
+				);
+			}
+		}
+	}
+
+	/**
+	 *
+	 * @param \stdClass $caller
+	 * @return array
+	 */
+	private function findSubpages( $caller ) {
+		$linkdedTitles = [];
+
+		$subpages = $caller->oRequestedTitle->getSubpages();
+
+		foreach ( $subpages as $title ) {
+			$pageProvider = new BsPDFPageProvider();
+			$pageContent = $pageProvider->getPage( [
+				'article-id' => $title->getArticleID(),
+				'title' => $title->getFullText()
+			] );
+
+			if ( !isset( $pageContent['dom'] ) ) {
+				continue;
+			}
+
+			$linkdedTitles = array_merge(
+				$linkdedTitles,
+				[
+					$title->getPrefixedText() => $pageContent
+				]
+			);
+		}
+
+		ksort( $linkdedTitles );
+
+		return $linkdedTitles;
+	}
+
+	/**
+	 *
+	 * @param array &$template
+	 * @param array $includedTitles
+	 */
+	private function makeBookmarks( &$template, $includedTitles ) {
+		foreach ( $includedTitles as $name => $content ) {
+			$bookmarkNode = BsUniversalExportHelper::getBookmarkElementForPageDOM( $content['dom'] );
+			$bookmarkNode = $template['dom']->importNode( $bookmarkNode, true );
+
+			$template['bookmarks-element']->appendChild( $bookmarkNode );
+		}
+	}
+
+	/**
+	 *
+	 * @param DOMNode &$domNode
 	 * @param array $linkMap
 	 */
 	protected function rewriteLinks( &$domNode, $linkMap ) {
 		$anchors = $domNode->getElementsByTagName( 'a' );
 		foreach ( $anchors as $anchor ) {
-			$href = null;
 			$linkTitle = $anchor->getAttribute( 'data-bs-title' );
+			$href  = $anchor->getAttribute( 'href' );
+
 			if ( $linkTitle ) {
 				$pathBasename = str_replace( '_', ' ', $linkTitle );
-				$href  = $anchor->getAttribute( 'href' );
 
 				$parsedHref = parse_url( $href );
-				$linkMap[$pathBasename] = md5( $pathBasename );
-				if ( isset( $parsedHref['fragment'] ) ) {
-					$linkMap[$pathBasename] = md5( $pathBasename ) . '-' . md5( $parsedHref['fragment'] );
+
+				if ( isset( $linkMap[$pathBasename] ) && isset( $parsedHref['fragment'] ) ) {
+					$linkMap[$pathBasename] = $linkMap[$pathBasename] . '-' . md5( $parsedHref['fragment'] );
 				}
 			} else {
-				$href = $anchor->getAttribute( 'href' );
-
 				$class = $anchor->getAttribute( 'class' );
 
 				if ( empty( $href ) ) {
@@ -246,7 +307,6 @@ class UEModulePDFSubpages extends BsExtensionMW {
 				}
 
 				$classes = explode( ' ', $class );
-
 				if ( in_array( 'external', $classes ) ) {
 					continue;
 				}
@@ -256,47 +316,22 @@ class UEModulePDFSubpages extends BsExtensionMW {
 					continue;
 				}
 
-				$parser = new \BlueSpice\Utility\UrlTitleParser(
-					$href, MediaWiki\MediaWikiServices::getInstance()->getMainConfig(), true
+				$parser = new UrlTitleParser(
+					$href, MediaWikiServices::getInstance()->getMainConfig(), true
 				);
 				$parsedTitle = $parser->parseTitle();
+
 				if ( !$parsedTitle instanceof Title ) {
 					continue;
 				}
+
 				$pathBasename = $parsedTitle->getPrefixedText();
-			}
-
-			$parser = new \BlueSpice\Utility\UrlTitleParser(
-				$href,
-				MediaWikiServices::getInstance()->getMainConfig()
-			);
-			$pathBasename = $parser->parseTitle()->getPrefixedText();
-
-			// Do we have a mapping?
-			if ( !isset( $linkMap[$pathBasename] ) ) {
-				$pathBasename = "";
-				// Do we have a mapping?
-				/*
-				 * The following logic is an alternative way of creating internal links
-				 * in case of poorly split up URLs like mentioned above
-				 */
-				if ( filter_var( $href, FILTER_VALIDATE_URL ) ) {
-					$hrefDecoded = urldecode( $href );
-					foreach ( $linkMap as $linkKey => $linkValue ) {
-						if ( strpos( str_replace( '_', ' ', $hrefDecoded ), $linkKey ) ) {
-							$pathBasename = $linkKey;
-						}
-					}
-
-					if ( empty( $pathBasename ) || strlen( $pathBasename ) <= 0 ) {
-						continue;
-					}
-				}
 			}
 
 			if ( !isset( $linkMap[$pathBasename] ) ) {
 				continue;
 			}
+
 			$anchor->setAttribute( 'href', '#' . $linkMap[$pathBasename] );
 		}
 	}
