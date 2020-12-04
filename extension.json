@@ -36,6 +36,9 @@
 			}
 		}
 	},
+	"AutoloadNamespaces": {
+		"BlueSpice\\UEModulePDFSubpages\\": "src/"
+	},
 	"GroupPermissions": {
 		"*": {
 			"uemodulepdfsubpages-export": true
@@ -52,5 +55,9 @@
 	"AutoloadClasses": {
 		"UEModulePDFSubpages": "UEModulePDFSubpages.class.php"
 	},
+	"Hooks": {
+		"ChameleonSkinTemplateOutputPageBeforeExec": "\\BlueSpice\\UEModulePDFSubpages\\Hook\\ChameleonSkinTemplateOutputPageBeforeExec\\AddWidget::callback"
+	},
+	"load_composer_autoloader": true,
 	"manifest_version": 2
 }
