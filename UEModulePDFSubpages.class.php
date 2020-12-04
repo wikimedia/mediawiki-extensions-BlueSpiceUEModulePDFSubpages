@@ -42,67 +42,7 @@ class UEModulePDFSubpages extends BsExtensionMW {
 	 * Initialization of UEModulePDFSubpages extension
 	 */
 	protected function initExt() {
-		// Hooks
-		$this->setHook(
-			'ChameleonSkinTemplateOutputPageBeforeExec',
-			'onSkinTemplateOutputPageBeforeExec'
-		);
 		$this->setHook( 'BSUEModulePDFBeforeAddingContent' );
-	}
-
-	/**
-	 * Hook handler to add menu
-	 * @param SkinTemplate &$oSkin
-	 * @param QuickTemplate &$oTemplate
-	 * @return bool Always true to keep hook running
-	 */
-	public function onSkinTemplateOutputPageBeforeExec( &$oSkin, &$oTemplate ) {
-		if ( $oSkin->getTitle()->isContentPage() === false ) {
-			return true;
-		}
-		if ( !MediaWikiServices::getInstance()
-			->getPermissionManager()
-			->userCan(
-				'uemodulepdfsubpages-export',
-				$oSkin->getUser(),
-				$oSkin->getTitle()
-			)
-		) {
-			return true;
-		}
-
-		$oTemplate->data['bs_export_menu'][] = $this->buildContentAction();
-
-		return true;
-	}
-
-	/**
-	 * Builds the ContentAction Array fort the current page
-	 * @return array - The ContentAction Array
-	 */
-	private function buildContentAction() {
-		$aCurrentQueryParams = $this->getRequest()->getValues();
-		if ( isset( $aCurrentQueryParams['title'] ) ) {
-			$sTitle = $aCurrentQueryParams['title'];
-		} else {
-			$sTitle = '';
-		}
-		$sSpecialPageParameter = BsCore::sanitize( $sTitle, '', BsPARAMTYPE::STRING );
-		$oSpecialPage = SpecialPage::getTitleFor( 'UniversalExport', $sSpecialPageParameter );
-		if ( isset( $aCurrentQueryParams['title'] ) ) {
-			unset( $aCurrentQueryParams['title'] );
-		}
-		$aCurrentQueryParams['ue[module]'] = 'pdf';
-		$aCurrentQueryParams['ue[subpages]'] = '1';
-
-		return [
-			'id' => 'pdf-subpages',
-			'href' => $oSpecialPage->getLinkUrl( $aCurrentQueryParams ),
-			'title' => wfMessage( 'bs-uemodulepdfsubpages-widgetlink-subpages-title' )->text(),
-			'text' => wfMessage( 'bs-uemodulepdfsubpages-widgetlink-subpages-text' )->text(),
-			'class' => 'bs-ue-export-link',
-			'iconClass' => 'icon-file-pdf bs-ue-export-link'
-		];
 	}
 
 	/**
