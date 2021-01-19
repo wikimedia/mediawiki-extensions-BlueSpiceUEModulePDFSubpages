@@ -20,7 +20,7 @@
 		"BlueSpiceFoundation": {
 			"Extensions": {
 				"BlueSpiceUEModulePDFSubpages": {
-					"className": "UEModulePDFSubpages",
+					"className": "\\BlueSpice\\UEModulePDFSubpages\\Extension",
 					"extPath": "/BlueSpiceUEModulePDFSubpages",
 					"package": "BlueSpice Pro",
 					"status": "stable"
@@ -51,9 +51,6 @@
 		"BlueSpiceUEModulePDFSubpages": [
 			"i18n"
 		]
-	},
-	"AutoloadClasses": {
-		"UEModulePDFSubpages": "UEModulePDFSubpages.class.php"
 	},
 	"Hooks": {
 		"ChameleonSkinTemplateOutputPageBeforeExec": "\\BlueSpice\\UEModulePDFSubpages\\Hook\\ChameleonSkinTemplateOutputPageBeforeExec\\AddWidget::callback",

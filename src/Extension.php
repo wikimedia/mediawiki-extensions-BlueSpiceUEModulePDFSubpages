@@ -28,10 +28,13 @@
  * @filesource
  */
 
+namespace BlueSpice\UEModulePDFSubpages;
+
+use BlueSpice\Extension as BaseExtension;
 /**
  * Base class for UniversalExport PDF Module extension
  * @package BlueSpice_Extensions
  * @subpackage UEModulePDFRecursive
  */
-class UEModulePDFSubpages extends BsExtensionMW {
+class Extension extends BaseExtension {
 }
