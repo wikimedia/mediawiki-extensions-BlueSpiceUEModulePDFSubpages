@@ -2,7 +2,7 @@
 
 namespace BlueSpice\UEModulePDFSubpages\Hook\ChameleonSkinTemplateOutputPageBeforeExec;
 
-use BlueSpice\Calumma\Hook\ChameleonSkinTemplateOutputPageBeforeExec;
+use BlueSpice\Hook\ChameleonSkinTemplateOutputPageBeforeExec;
 
 class AddWidget extends ChameleonSkinTemplateOutputPageBeforeExec {
 	/**
