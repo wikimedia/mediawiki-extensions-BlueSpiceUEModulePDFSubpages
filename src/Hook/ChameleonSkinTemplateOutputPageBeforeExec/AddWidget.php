@@ -3,6 +3,7 @@
 namespace BlueSpice\UEModulePDFSubpages\Hook\ChameleonSkinTemplateOutputPageBeforeExec;
 
 use BlueSpice\Hook\ChameleonSkinTemplateOutputPageBeforeExec;
+use BlueSpice\UniversalExport\ModuleFactory;
 
 class AddWidget extends ChameleonSkinTemplateOutputPageBeforeExec {
 	/**
@@ -25,21 +26,16 @@ class AddWidget extends ChameleonSkinTemplateOutputPageBeforeExec {
 	}
 
 	protected function doProcess() {
-		$currentQueryParams = $this->getContext()->getRequest()->getValues();
-		$currentQueryParams['ue[module]'] = 'pdf';
-		$currentQueryParams['ue[subpages]'] = '1';
-
-		$title = '';
-		if ( isset( $currentQueryParams['title'] ) ) {
-			$title = $currentQueryParams['title'];
-			unset( $currentQueryParams['title'] );
-		}
-		$specialPage = $this->getServices()->getSpecialPageFactory()->getPage(
-			'UniversalExport'
+		/** @var ModuleFactory $moduleFactory */
+		$moduleFactory = $this->getServices()->getService(
+			'BSUniversalExportModuleFactory'
 		);
+		$module = $moduleFactory->newFromName( 'pdf' );
 		$contentActions = [
 			'id' => 'pdf-subpages',
-			'href' => $specialPage->getPageTitle( $title )->getLinkUrl( $currentQueryParams ),
+			'href' => $module->getExportLink( $this->getContext()->getRequest(),  [
+				'ue[subpages]' => '1',
+			] ),
 			'title' => $this->msg( 'bs-uemodulepdfsubpages-widgetlink-subpages-title' )->plain(),
 			'text' => $this->msg( 'bs-uemodulepdfsubpages-widgetlink-subpages-text' )->plain(),
 			'class' => 'bs-ue-export-link',
