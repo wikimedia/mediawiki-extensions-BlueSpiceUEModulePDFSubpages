@@ -25,36 +25,16 @@
 					"package": "BlueSpice Pro",
 					"status": "stable"
 				}
-			},
-			"PermissionRegistry": {
-				"uemodulepdfsubpages-export": {
-					"type": "namespace",
-					"roles": [
-						"reader"
-					]
-				}
 			}
 		}
 	},
 	"AutoloadNamespaces": {
 		"BlueSpice\\UEModulePDFSubpages\\": "src/"
 	},
-	"GroupPermissions": {
-		"*": {
-			"uemodulepdfsubpages-export": true
-		}
-	},
-	"AvailableRights": [
-		"uemodulepdfsubpages-export"
-	],
 	"MessagesDirs": {
 		"BlueSpiceUEModulePDFSubpages": [
 			"i18n"
 		]
-	},
-	"Hooks": {
-		"ChameleonSkinTemplateOutputPageBeforeExec": "\\BlueSpice\\UEModulePDFSubpages\\Hook\\ChameleonSkinTemplateOutputPageBeforeExec\\AddWidget::callback",
-		"BSUEModulePDFBeforeAddingContent": "\\BlueSpice\\UEModulePDFSubpages\\Hook\\BSUEModulePDFBeforeAddingContent\\AddSubPages::callback"
 	},
 	"load_composer_autoloader": true,
 	"manifest_version": 2
