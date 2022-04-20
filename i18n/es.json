@@ -1,9 +1,10 @@
 {
 	"@metadata": {
 		"authors": [
-			"Fitoschido"
+			"DiegoAmbrocio"
 		]
 	},
 	"bs-uemodulepdfsubpages-widgetlink-subpages-text": "Página PDF con subpáginas",
-	"bs-uemodulepdfsubpages-widgetlink-subpages-title": "Exportar esta página y todas las subpáginas como PDF."
+	"bs-uemodulepdfsubpages-widgetlink-subpages-title": "Exportar esta página y todas las subpáginas como PDF.",
+	"bs-uemodulepdfsubpages-extension-description": "Permite la exportación recursiva de páginas en formato PDF con subpáginas."
 }
