@@ -1,8 +1,9 @@
 {
 	"@metadata": {
 		"authors": [
-			"沈澄心"
+			"StarrySky"
 		]
 	},
-	"bs-uemodulepdfsubpages-widgetlink-subpages-text": "带有子页面的PDF页面"
+	"bs-uemodulepdfsubpages-widgetlink-subpages-text": "带有子页面的PDF页面",
+	"bs-uemodulepdfsubpages-extension-description": "启用将页面递归导出为 PDF 格式。"
 }
