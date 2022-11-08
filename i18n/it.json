@@ -1,10 +1,11 @@
 {
 	"@metadata": {
 		"authors": [
-			"Beta16"
+			"GpieroMW"
 		]
 	},
 	"bs-uemodulepdfsubpages-widgetlink-subpages-title": "Esporta questa pagine e tutte le sue sottopagine come PDF.",
 	"action-uemodulepdfsubpages-export": "esportare una pagina, comprese tutte le sue sottopagine, come PDF",
-	"right-uemodulepdfsubpages-export": "Esporta una pagina, comprese tutte le sue sottopagine, come PDF"
+	"right-uemodulepdfsubpages-export": "Esporta una pagina, comprese tutte le sue sottopagine, come PDF",
+	"bs-uemodulepdfsubpages-extension-description": "Permette l'esportazione ricorsiva di pagine in formato PDF con sottopagine."
 }
