@@ -1,0 +1,8 @@
+{
+	"@metadata": {
+		"authors": [
+			"Wizzard"
+		]
+	},
+	"bs-uemodulepdfsubpages-extension-description": "Umožňuje rekurzívny export stránok do formátu PDF spolu s podstránkami."
+}
