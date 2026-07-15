@@ -1,0 +1,8 @@
+{
+	"@metadata": {
+		"authors": [
+			"Tensama0415"
+		]
+	},
+	"bs-uemodulepdfsubpages-extension-description": "下位ページを含むページを再帰的にPDF形式にエクスポートできるようにする"
+}
